@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ecommerce
+resources:
+  - ../../base/00-namespace.yaml
+  - ../../base/01-configmap.yaml
+  - ../../base/99-networkpolicy-default-deny.yaml
+  - ../../base/rabbitmq.yaml
+  - ../../base/ingress.yaml

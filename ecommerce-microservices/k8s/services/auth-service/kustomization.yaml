@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ecommerce
+resources:
+  - ../../base/auth-service-deployment.yaml
+  - ../../base/auth-service-service.yaml
+  - ../../base/auth-service-networkpolicy.yaml

@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ecommerce
+resources:
+  - ../../base/orders-service-deployment.yaml
+  - ../../base/orders-service-service.yaml
+  - ../../base/orders-service-networkpolicy.yaml

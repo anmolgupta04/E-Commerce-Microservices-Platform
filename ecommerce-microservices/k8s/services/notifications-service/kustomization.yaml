@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ecommerce
+resources:
+  - ../../base/notifications-service-deployment.yaml
+  - ../../base/notifications-service-service.yaml
+  - ../../base/notifications-service-networkpolicy.yaml
+  - ../../base/notifications-service-consumer-deployment.yaml
