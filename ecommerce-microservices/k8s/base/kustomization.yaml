@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ecommerce
+resources:
+  - 00-namespace.yaml
+  - 01-configmap.yaml
+  # 02-secret.template.yaml is intentionally NOT listed here -- render it
+  # with real values (or better, replace with an ExternalSecret) before
+  # applying. See ../overlays/production/README.md.
+  - 99-networkpolicy-default-deny.yaml
+  - rabbitmq.yaml
+  - ingress.yaml
+  - auth-service-deployment.yaml
+  - auth-service-service.yaml
+  - auth-service-networkpolicy.yaml
+  - catalog-service-deployment.yaml
+  - catalog-service-service.yaml
+  - catalog-service-networkpolicy.yaml
+  - orders-service-deployment.yaml
+  - orders-service-service.yaml
+  - orders-service-networkpolicy.yaml
+  - payments-service-deployment.yaml
+  - payments-service-consumer-deployment.yaml
+  - payments-service-service.yaml
+  - payments-service-networkpolicy.yaml
+  - notifications-service-deployment.yaml
+  - notifications-service-consumer-deployment.yaml
+  - notifications-service-service.yaml
+  - notifications-service-networkpolicy.yaml

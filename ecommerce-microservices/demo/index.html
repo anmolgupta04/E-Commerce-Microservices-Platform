@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-Commerce Microservices — Trace Demo</title>
+<style>
+  :root{
+    --bg:#0B0E14;
+    --panel:#12161F;
+    --panel-2:#171C27;
+    --line:#232A38;
+    --text:#E6E8EB;
+    --muted:#7B8494;
+    --sync:#E8A33D;
+    --async:#2DD4BF;
+    --db:#8B7CF6;
+    --ok:#34D399;
+    --fail:#F87171;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{padding:28px 20px 60px;}
+  .wrap{max-width:1120px;margin:0 auto;}
+
+  header{margin-bottom:26px;}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--async);text-transform:uppercase;margin-bottom:8px;}
+  h1{font-size:26px;margin:0 0 6px;font-weight:650;letter-spacing:-.01em;}
+  .sub{color:var(--muted);font-size:14px;max-width:640px;line-height:1.5;}
+
+  /* topology */
+  .topo{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 18px 26px;margin-bottom:22px;position:relative;overflow:hidden;}
+  .topo-title{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px;}
+  svg{display:block;width:100%;height:auto;}
+  .node-box{fill:var(--panel-2);stroke:var(--line);stroke-width:1.4;transition:stroke .25s, fill .25s;}
+  .node-box.active{stroke:var(--sync);fill:#1C1710;}
+  .node-box.active.async-active{stroke:var(--async);fill:#0F1D1B;}
+  .node-label{fill:var(--text);font-family:var(--mono);font-size:12.5px;font-weight:600;}
+  .node-sub{fill:var(--muted);font-family:var(--mono);font-size:9.5px;}
+  .edge{stroke:var(--line);stroke-width:1.4;fill:none;}
+  .edge.sync-flow{stroke:var(--sync);stroke-width:2;}
+  .edge.async-flow{stroke:var(--async);stroke-width:2;stroke-dasharray:4 3;}
+  .pulse{fill:var(--sync);opacity:0;}
+  .pulse.async{fill:var(--async);}
+
+  /* scenario tabs */
+  .tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+  .tab{font-family:var(--mono);font-size:12px;padding:9px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer;transition:all .15s;}
+  .tab:hover{color:var(--text);border-color:#333c4d;}
+  .tab.active{color:var(--bg);background:var(--text);border-color:var(--text);}
+
+  .controls{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+  .play-btn{font-family:var(--mono);font-size:12.5px;padding:10px 18px;border-radius:8px;border:1px solid var(--async);background:rgba(45,212,191,.08);color:var(--async);cursor:pointer;transition:all .15s;}
+  .play-btn:hover{background:rgba(45,212,191,.16);}
+  .play-btn:disabled{opacity:.4;cursor:default;}
+  .legend{display:flex;gap:16px;font-family:var(--mono);font-size:11px;color:var(--muted);}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .dot{width:8px;height:8px;border-radius:2px;display:inline-block;}
+
+  /* trace list */
+  .trace{display:flex;flex-direction:column;gap:8px;}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;opacity:0;transform:translateY(6px);transition:opacity .35s, transform .35s, border-color .2s;}
+  .step.shown{opacity:1;transform:translateY(0);}
+  .step.current{border-color:var(--sync);}
+  .step.current.async-step{border-color:var(--async);}
+  .step-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .badge{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;padding:3px 7px;border-radius:5px;text-transform:uppercase;flex-shrink:0;}
+  .badge.sync{background:rgba(232,163,61,.14);color:var(--sync);}
+  .badge.async{background:rgba(45,212,191,.14);color:var(--async);}
+  .badge.dbw{background:rgba(139,124,246,.14);color:var(--db);}
+  .badge.ok{background:rgba(52,211,153,.14);color:var(--ok);}
+  .badge.fail{background:rgba(248,113,113,.14);color:var(--fail);}
+  .route{font-family:var(--mono);font-size:13px;color:var(--text);}
+  .route .arrow{color:var(--muted);margin:0 6px;}
+  .desc{color:var(--muted);font-size:12.5px;margin-left:auto;}
+  .payload{font-family:var(--mono);font-size:11.5px;color:#9FA8B8;background:#0D1017;border:1px solid var(--line);border-radius:7px;padding:8px 10px;margin-top:9px;white-space:pre-wrap;word-break:break-word;display:none;}
+  .step.shown .payload{display:block;}
+
+  .final{margin-top:20px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;font-family:var(--mono);font-size:12.5px;color:var(--muted);opacity:0;transition:opacity .4s;}
+  .final.shown{opacity:1;}
+  .final b{color:var(--text);}
+  .final .ok-text{color:var(--ok);}
+  .final .fail-text{color:var(--fail);}
+
+  footer{margin-top:34px;color:var(--muted);font-size:11.5px;font-family:var(--mono);text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">order lifecycle · trace replay</div>
+    <h1>E-Commerce Microservices</h1>
+    <div class="sub">This replays real, captured request/response data from an actual run of all 5 services (see DEMO_TRANSCRIPT.md) — nothing here is simulated after the fact. Pick a scenario and press play.</div>
+  </header>
+
+  <div class="topo">
+    <div class="topo-title">service topology</div>
+    <svg viewBox="0 0 1080 300" id="topoSvg">
+      <!-- edges drawn first so nodes sit on top -->
+      <path class="edge" id="e-client-orders" d="M 90 150 L 300 150"/>
+      <path class="edge" id="e-orders-auth"   d="M 380 110 C 430 60, 470 60, 520 90"/>
+      <path class="edge" id="e-orders-catalog" d="M 380 150 L 520 150"/>
+      <path class="edge" id="e-orders-bus"    d="M 380 190 C 430 240, 470 240, 520 210"/>
+      <path class="edge" id="e-bus-payments"  d="M 620 210 C 660 250, 700 250, 740 210"/>
+      <path class="edge" id="e-bus-notif"     d="M 620 220 C 700 290, 820 290, 900 200"/>
+      <path class="edge" id="e-payments-orders" d="M 780 170 C 620 40, 480 40, 380 105"/>
+      <path class="edge" id="e-payments-bus2" d="M 780 195 C 730 235, 690 235, 660 215"/>
+
+      <!-- Client -->
+      <g>
+        <rect class="node-box" id="n-client" x="10" y="125" width="80" height="50" rx="10"/>
+        <text class="node-label" x="50" y="147" text-anchor="middle">client</text>
+        <text class="node-sub" x="50" y="163" text-anchor="middle">you</text>
+      </g>
+
+      <!-- Orders -->
+      <g>
+        <rect class="node-box" id="n-orders" x="300" y="125" width="90" height="50" rx="10"/>
+        <text class="node-label" x="345" y="147" text-anchor="middle">orders</text>
+        <text class="node-sub" x="345" y="163" text-anchor="middle">:8003</text>
+      </g>
+
+      <!-- Auth -->
+      <g>
+        <rect class="node-box" id="n-auth" x="520" y="65" width="90" height="50" rx="10"/>
+        <text class="node-label" x="565" y="87" text-anchor="middle">auth</text>
+        <text class="node-sub" x="565" y="103" text-anchor="middle">:8001</text>
+      </g>
+
+      <!-- Catalog -->
+      <g>
+        <rect class="node-box" id="n-catalog" x="520" y="125" width="90" height="50" rx="10"/>
+        <text class="node-label" x="565" y="147" text-anchor="middle">catalog</text>
+        <text class="node-sub" x="565" y="163" text-anchor="middle">:8002</text>
+      </g>
+
+      <!-- Event bus -->
+      <g>
+        <rect class="node-box" id="n-bus" x="520" y="195" width="100" height="46" rx="10"/>
+        <text class="node-label" x="570" y="215" text-anchor="middle" style="font-size:11px">event bus</text>
+        <text class="node-sub" x="570" y="230" text-anchor="middle">order.*</text>
+      </g>
+
+      <!-- Payments -->
+      <g>
+        <rect class="node-box" id="n-payments" x="740" y="150" width="90" height="50" rx="10"/>
+        <text class="node-label" x="785" y="172" text-anchor="middle">payments</text>
+        <text class="node-sub" x="785" y="188" text-anchor="middle">:8004</text>
+      </g>
+
+      <!-- Notifications -->
+      <g>
+        <rect class="node-box" id="n-notif" x="900" y="150" width="110" height="50" rx="10"/>
+        <text class="node-label" x="955" y="172" text-anchor="middle" style="font-size:11px">notifications</text>
+        <text class="node-sub" x="955" y="188" text-anchor="middle">:8005</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="controls">
+    <button class="play-btn" id="playBtn">▶ play trace</button>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--sync)"></i>sync REST</span>
+      <span><i class="dot" style="background:var(--async)"></i>async event</span>
+      <span><i class="dot" style="background:var(--db)"></i>db write</span>
+    </div>
+  </div>
+
+  <div class="trace" id="trace"></div>
+  <div class="final" id="final"></div>
+
+  <footer>generated from a real run of all 5 services · zero mocked HTTP calls · see DEMO_TRANSCRIPT.md for the raw curl session</footer>
+</div>
+
+<script>
+const scenarios = {
+  happy: {
+    label: "① Happy path — order #2",
+    order: {id:2, product:"Mechanical Keyboard", qty:1, total:"89.00"},
+    steps: [
+      {type:"sync", edge:"e-client-orders", nodes:["n-client","n-orders"], route:"client → orders", desc:"place order", payload:
+`POST /api/orders/
+Authorization: Bearer <jwt>
+{"items":[{"product_id":2,"quantity":1}]}`},
+      {type:"sync", edge:"e-orders-auth", nodes:["n-orders","n-auth"], route:"orders → auth", desc:"verify JWT is real", payload:
+`POST /api/auth/verify/  {"token":"<jwt>"}
+→ 200 {"valid":true,"user_id":1,"username":"ansh"}`},
+      {type:"sync", edge:"e-orders-catalog", nodes:["n-orders","n-catalog"], route:"orders → catalog", desc:"price line item", payload:
+`GET /api/catalog/products/2/
+→ 200 {"name":"Mechanical Keyboard","price":"89.00","stock":30}`},
+      {type:"sync", edge:"e-orders-catalog", nodes:["n-orders","n-catalog"], route:"orders → catalog", desc:"reserve stock", payload:
+`POST /api/catalog/products/2/adjust-stock/  {"quantity":-1}
+X-Internal-Token: <internal>
+→ 200 {"stock":29}`},
+      {type:"db", nodes:["n-orders"], route:"orders db", desc:"order row written", payload:
+`Order#2  status=pending_payment  total=89.00`},
+      {type:"async", edge:"e-orders-bus", nodes:["n-orders","n-bus"], route:"orders ⇢ event bus", desc:"publish order.created", payload:
+`order.created  {"order_id":2,"user_id":1,"username":"ansh","total_amount":"89.00"}`},
+      {type:"async", edge:"e-bus-payments", nodes:["n-bus","n-payments"], route:"event bus ⇢ payments", desc:"consume order.created", payload:
+`payments-consumer received order.created for order #2`},
+      {type:"sync", nodes:["n-payments"], route:"payments → mock gateway", desc:"charge $89.00", payload:
+`charge(order_id=2, amount=89.00) → {"success":true,"reference":"mock_4910e9fa6018"}`},
+      {type:"sync", edge:"e-payments-orders", nodes:["n-payments","n-orders"], route:"payments → orders", desc:"callback: mark paid", payload:
+`POST /api/orders/2/mark-paid/  X-Internal-Token: <internal>
+→ 200 {"status":"paid"}`},
+      {type:"async", edge:"e-payments-bus2", nodes:["n-payments","n-bus"], route:"payments ⇢ event bus", desc:"publish order.paid", payload:
+`order.paid  {"order_id":2,"username":"ansh","amount":"89.00"}`},
+      {type:"async", edge:"e-bus-notif", nodes:["n-bus","n-notif"], route:"event bus ⇢ notifications", desc:"consume order.created + order.paid", payload:
+`"Hi ansh, we received your order #2 for 89.00. We'll email you once payment clears."
+"Hi ansh, payment for order #2 succeeded (89.00). It's on its way!"`},
+    ],
+    final: {ok:true, text:'order #2 → <b class="ok-text">paid</b> · stock 30 → 29 · payment succeeded · 2 notifications logged'}
+  },
+  declined: {
+    label: "② Payment declined — order #3",
+    order: {id:3, product:"Decline Test Item", qty:1, total:"666.00"},
+    steps: [
+      {type:"sync", edge:"e-client-orders", nodes:["n-client","n-orders"], route:"client → orders", desc:"place order", payload:
+`POST /api/orders/  {"items":[{"product_id":4,"quantity":1}]}`},
+      {type:"sync", edge:"e-orders-auth", nodes:["n-orders","n-auth"], route:"orders → auth", desc:"verify JWT is real", payload:
+`→ 200 {"valid":true,"user_id":1,"username":"ansh"}`},
+      {type:"sync", edge:"e-orders-catalog", nodes:["n-orders","n-catalog"], route:"orders → catalog", desc:"price + reserve stock", payload:
+`price=666.00 · adjust-stock -1 → stock 10 → 9`},
+      {type:"db", nodes:["n-orders"], route:"orders db", desc:"order row written", payload:
+`Order#3  status=pending_payment  total=666.00`},
+      {type:"async", edge:"e-orders-bus", nodes:["n-orders","n-bus"], route:"orders ⇢ event bus", desc:"publish order.created", payload:
+`order.created  {"order_id":3,"total_amount":"666.00"}`},
+      {type:"async", edge:"e-bus-payments", nodes:["n-bus","n-payments"], route:"event bus ⇢ payments", desc:"consume order.created", payload:
+`payments-consumer received order.created for order #3`},
+      {type:"fail", nodes:["n-payments"], route:"payments → mock gateway", desc:"charge $666.00 — declined", payload:
+`charge(order_id=3, amount=666.00) → {"success":false,"reason":"card_declined (mock gateway rule)"}`},
+      {type:"sync", edge:"e-payments-orders", nodes:["n-payments","n-orders"], route:"payments → orders", desc:"callback: mark payment failed", payload:
+`POST /api/orders/3/mark-payment-failed/
+→ orders rolls back reservation: POST /api/catalog/products/4/adjust-stock/ {"quantity":1}
+→ stock 9 → 10, order status → payment_failed`},
+      {type:"async", edge:"e-payments-bus2", nodes:["n-payments","n-bus"], route:"payments ⇢ event bus", desc:"publish order.payment_failed", payload:
+`order.payment_failed  {"order_id":3,"reason":"card_declined (mock gateway rule)"}`},
+      {type:"async", edge:"e-bus-notif", nodes:["n-bus","n-notif"], route:"event bus ⇢ notifications", desc:"consume events", payload:
+`"Hi ansh, payment for order #3 failed: card_declined (mock gateway rule). Please try again."`},
+    ],
+    final: {ok:false, text:'order #3 → <b class="fail-text">payment_failed</b> · stock correctly rolled back to 10 · no inventory left stranded'}
+  },
+  outofstock: {
+    label: "③ Insufficient stock — rejected before an order exists",
+    order: {id:null, product:"Mechanical Keyboard", qty:9999, total:"—"},
+    steps: [
+      {type:"sync", edge:"e-client-orders", nodes:["n-client","n-orders"], route:"client → orders", desc:"place order", payload:
+`POST /api/orders/  {"items":[{"product_id":2,"quantity":9999}]}`},
+      {type:"sync", edge:"e-orders-auth", nodes:["n-orders","n-auth"], route:"orders → auth", desc:"verify JWT is real", payload:
+`→ 200 {"valid":true}`},
+      {type:"fail", edge:"e-orders-catalog", nodes:["n-orders","n-catalog"], route:"orders → catalog", desc:"reserve stock — insufficient", payload:
+`POST /api/catalog/products/2/adjust-stock/ {"quantity":-9999}
+→ 409 {"detail":"insufficient stock","available":29}`},
+    ],
+    final: {ok:false, text:'request → <b class="fail-text">409 Conflict</b> · no order row created · no event published · nothing to roll back'}
+  }
+};
+
+const tabsEl = document.getElementById('tabs');
+const traceEl = document.getElementById('trace');
+const finalEl = document.getElementById('final');
+const playBtn = document.getElementById('playBtn');
+let currentKey = 'happy';
+let playing = false;
+
+function badgeFor(type){
+  if(type==='sync') return '<span class="badge sync">sync</span>';
+  if(type==='async') return '<span class="badge async">async</span>';
+  if(type==='db') return '<span class="badge dbw">db</span>';
+  if(type==='fail') return '<span class="badge fail">fail</span>';
+  return '';
+}
+
+function clearActive(){
+  document.querySelectorAll('.node-box').forEach(n=>n.classList.remove('active','async-active'));
+  document.querySelectorAll('.edge').forEach(e=>e.classList.remove('sync-flow','async-flow'));
+}
+
+function renderScenario(key){
+  currentKey = key;
+  const s = scenarios[key];
+  traceEl.innerHTML = '';
+  finalEl.classList.remove('shown');
+  finalEl.innerHTML = '';
+  clearActive();
+
+  s.steps.forEach((step, i) => {
+    const div = document.createElement('div');
+    div.className = 'step';
+    div.id = 'step-'+i;
+    div.innerHTML = `
+      <div class="step-row">
+        ${badgeFor(step.type)}
+        <span class="route">${step.route}</span>
+        <span class="desc">${step.desc}</span>
+      </div>
+      <div class="payload">${step.payload}</div>
+    `;
+    traceEl.appendChild(div);
+  });
+
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.key === key));
+  playBtn.disabled = false;
+  playBtn.textContent = '▶ play trace';
+}
+
+function buildTabs(){
+  Object.entries(scenarios).forEach(([key, s]) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (key===currentKey ? ' active' : '');
+    btn.textContent = s.label;
+    btn.dataset.key = key;
+    btn.onclick = () => { if(!playing) renderScenario(key); };
+    tabsEl.appendChild(btn);
+  });
+}
+
+async function play(){
+  if(playing) return;
+  playing = true;
+  playBtn.disabled = true;
+  playBtn.textContent = '⏸ playing…';
+  const s = scenarios[currentKey];
+  clearActive();
+  document.querySelectorAll('.step').forEach(el => { el.classList.remove('shown','current','async-step'); });
+
+  for(let i=0;i<s.steps.length;i++){
+    const step = s.steps[i];
+    const el = document.getElementById('step-'+i);
+    clearActive();
+    if(step.edge){
+      const edgeEl = document.getElementById(step.edge);
+      if(edgeEl) edgeEl.classList.add(step.type==='async' ? 'async-flow' : 'sync-flow');
+    }
+    (step.nodes||[]).forEach(nid => {
+      const n = document.getElementById(nid);
+      if(n){ n.classList.add('active'); if(step.type==='async') n.classList.add('async-active'); }
+    });
+    el.classList.add('shown','current');
+    if(step.type==='async') el.classList.add('async-step');
+    await new Promise(r=>setTimeout(r, 900));
+    el.classList.remove('current','async-step');
+  }
+  clearActive();
+  finalEl.innerHTML = (s.final.ok ? '✓ ' : '✕ ') + s.final.text;
+  finalEl.classList.add('shown');
+  playing = false;
+  playBtn.disabled = false;
+  playBtn.textContent = '↻ replay';
+}
+
+playBtn.onclick = play;
+buildTabs();
+renderScenario('happy');
+</script>
+</body>
+</html>

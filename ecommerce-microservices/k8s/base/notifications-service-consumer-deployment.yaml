@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifications-service-consumer
+  namespace: ecommerce
+  labels:
+    app: notifications-service-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notifications-service-consumer
+  template:
+    metadata:
+      labels:
+        app: notifications-service-consumer
+    spec:
+      containers:
+        - name: notifications-service-consumer
+          image: ghcr.io/YOUR_ORG/notifications-service:latest
+          envFrom:
+            - configMapRef:
+                name: ecommerce-config
+            - secretRef:
+                name: ecommerce-secrets
+          env:
+            - name: DB_NAME
+              value: "notifications_db"
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: ecommerce-secrets
+                  key: NOTIFICATIONS_DB_HOST
+          command: ["python", "manage.py", "consume_events"]
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false

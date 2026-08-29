@@ -1,0 +1,46 @@
+# Default-deny is applied cluster-wide by 99-networkpolicy-default-deny.yaml.
+# This policy opens only what notifications-service actually needs: inbound from any pod
+# in the namespace (Orders/Payments calling it) plus the ingress
+# controller, and DNS + RabbitMQ + Postgres egress.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: notifications-service-allow
+  namespace: ecommerce
+spec:
+  podSelector:
+    matchLabels:
+      app: notifications-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ecommerce
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - port: 8000
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: rabbitmq
+      ports:
+        - port: 5672
+    - ports:
+        - port: 5432   # RDS is outside the cluster; egress to 0.0.0.0/0:5432 scoped by AWS SG in practice
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 8000   # inter-service REST calls

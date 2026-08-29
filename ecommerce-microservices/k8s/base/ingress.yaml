@@ -1,0 +1,53 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ecommerce-ingress
+  namespace: ecommerce
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.example.com
+      secretName: ecommerce-tls
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8000
+          - path: /api/catalog
+            pathType: Prefix
+            backend:
+              service:
+                name: catalog-service
+                port:
+                  number: 8000
+          - path: /api/orders
+            pathType: Prefix
+            backend:
+              service:
+                name: orders-service
+                port:
+                  number: 8000
+          - path: /api/payments
+            pathType: Prefix
+            backend:
+              service:
+                name: payments-service
+                port:
+                  number: 8000
+          - path: /api/notifications
+            pathType: Prefix
+            backend:
+              service:
+                name: notifications-service
+                port:
+                  number: 8000
