@@ -1,0 +1,20 @@
+name: orders-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'orders-service/**'
+      - '.github/workflows/orders-service.yml'
+      - '.github/workflows/reusable-service-pipeline.yml'
+  pull_request:
+    paths:
+      - 'orders-service/**'
+
+jobs:
+  pipeline:
+    uses: ./.github/workflows/reusable-service-pipeline.yml
+    with:
+      service_name: orders-service
+      service_dir: orders-service
+    secrets: inherit

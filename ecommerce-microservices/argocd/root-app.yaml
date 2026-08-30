@@ -1,0 +1,27 @@
+# The single Application ArgoCD is pointed at manually (via `argocd app
+# create` or `kubectl apply -f` once). Everything else -- all 5 services --
+# is discovered automatically from applications/*.yaml in this same repo,
+# so adding a 6th microservice later means adding one file here, not
+# touching ArgoCD's config.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ecommerce-app-of-apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/YOUR_ORG/ecommerce-microservices.git
+    targetRevision: main
+    path: argocd/applications
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

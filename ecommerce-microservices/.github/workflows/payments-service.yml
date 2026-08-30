@@ -1,0 +1,20 @@
+name: payments-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'payments-service/**'
+      - '.github/workflows/payments-service.yml'
+      - '.github/workflows/reusable-service-pipeline.yml'
+  pull_request:
+    paths:
+      - 'payments-service/**'
+
+jobs:
+  pipeline:
+    uses: ./.github/workflows/reusable-service-pipeline.yml
+    with:
+      service_name: payments-service
+      service_dir: payments-service
+    secrets: inherit

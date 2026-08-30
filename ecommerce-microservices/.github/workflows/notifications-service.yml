@@ -1,0 +1,20 @@
+name: notifications-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'notifications-service/**'
+      - '.github/workflows/notifications-service.yml'
+      - '.github/workflows/reusable-service-pipeline.yml'
+  pull_request:
+    paths:
+      - 'notifications-service/**'
+
+jobs:
+  pipeline:
+    uses: ./.github/workflows/reusable-service-pipeline.yml
+    with:
+      service_name: notifications-service
+      service_dir: notifications-service
+    secrets: inherit

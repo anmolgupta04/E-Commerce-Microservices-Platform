@@ -1,0 +1,20 @@
+name: catalog-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'catalog-service/**'
+      - '.github/workflows/catalog-service.yml'
+      - '.github/workflows/reusable-service-pipeline.yml'
+  pull_request:
+    paths:
+      - 'catalog-service/**'
+
+jobs:
+  pipeline:
+    uses: ./.github/workflows/reusable-service-pipeline.yml
+    with:
+      service_name: catalog-service
+      service_dir: catalog-service
+    secrets: inherit

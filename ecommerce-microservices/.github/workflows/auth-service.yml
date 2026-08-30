@@ -1,0 +1,20 @@
+name: auth-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'auth-service/**'
+      - '.github/workflows/auth-service.yml'
+      - '.github/workflows/reusable-service-pipeline.yml'
+  pull_request:
+    paths:
+      - 'auth-service/**'
+
+jobs:
+  pipeline:
+    uses: ./.github/workflows/reusable-service-pipeline.yml
+    with:
+      service_name: auth-service
+      service_dir: auth-service
+    secrets: inherit
